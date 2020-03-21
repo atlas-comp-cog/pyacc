@@ -1,1 +1,1 @@
-from pyacc.api import ACC
+from pyacc.api import ACC  # noqa: F401

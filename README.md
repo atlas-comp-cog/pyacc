@@ -1,2 +1,3 @@
-# pyacoco
-Python library to curate acoco-data
+# pyacc
+
+Python library to curate the data of the Atlas of Comparative Cognition

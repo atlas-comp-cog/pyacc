@@ -31,16 +31,20 @@ def valid_doi(instance, attribute, value):
 
 @attr.s
 class Experiment:
+    review_title = attr.ib()
     reviewer = attr.ib(converter=nameparser.HumanName)  # Contribution
     paper_number = attr.ib()
     experiment_number = attr.ib()
     species = attr.ib()  # Language
     species_latin = attr.ib()
     doi = attr.ib(converter=clean_doi, validator=valid_doi)  # Source
+    domain = attr.ib()
+    area = attr.ib()
     parameter = attr.ib()  # Parameter
     sample_size = attr.ib()
     type = attr.ib(validator=attr.validators.in_(['experimental', 'observational', 'other']))
     year = attr.ib(converter=lambda s: int(s) if s else None)
+    source_abstract = attr.ib(converter=lambda s: s if s != 'NA' else None)
     source = attr.ib(default=None)
 
     @property
@@ -49,12 +53,11 @@ class Experiment:
 
     @property
     def contribution_id(self):
-        return '{0}-{1}-{2}'.format(self.contributor_id, slug(self.doi), self.experiment_number)
+        return '{0}-{1}'.format(self.contributor_id, slug(self.review_title))
 
     @property
     def contribution_name(self):
-        return '{0} experiment {1} reviewed by {2}'.format(
-            self.doi, self.experiment_number, self.reviewer)
+        return '{0} by {1}'.format(self.review_title, self.reviewer)
 
     @property
     def species_id(self):
@@ -66,21 +69,26 @@ class Experiment:
 
     @property
     def id(self):
-        return '{0}-{1}'.format(self.contribution_id, self.species_id)
+        return '{0}-{1}-{2}-{3}'.format(
+            self.contributor_id, slug(self.doi), self.experiment_number, self.species_id)
 
     @classmethod
     def from_dict(cls, d, sources):
         res = cls(
+            review_title=d['Working Title'],
             reviewer=d['Reviewer'],
             paper_number=d['Paper #'],
             experiment_number=d['Experiment #'],
             species=d['Species   (common name)'],
             species_latin=d['Species         (latin name)'],
             doi=d['DOI'],
-            parameter=d['Topic'],
+            domain=d['Domain'],
+            area=d['Area'],
+            parameter=d['Cognitive ability'],
             sample_size=d['Sample size'],
             type=d['Research Kind'],
-            year=d['Publication Year']
+            year=d['Publication Year'],
+            source_abstract=d['Abstract'],
         )
         res.source = sources.get(res.doi)
         if res.source:

@@ -12,6 +12,10 @@ import nameparser
 from pyacc import util
 
 
+def species_converter(s):
+    return {'pan troglydytes': 'pan troglodytes'}.get(s, s)
+
+
 def clean_doi(s):
     s = urllib.parse.urlparse(s.strip()).path
     if s.startswith('/'):  # Remove leading / in case a DOI URL was passed:
@@ -36,7 +40,7 @@ class Experiment:
     paper_number = attr.ib()
     experiment_number = attr.ib()
     species = attr.ib()  # Language
-    species_latin = attr.ib()
+    species_latin = attr.ib(converter=species_converter)
     doi = attr.ib(converter=clean_doi, validator=valid_doi)  # Source
     domain = attr.ib()
     area = attr.ib()

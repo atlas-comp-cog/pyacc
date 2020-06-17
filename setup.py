@@ -29,6 +29,8 @@ setup(
         'openpyxl',
         'attrs',
         'nameparser',
+        'requests',
+        'newick',
     ],
     extras_require={
         'dev': ['flake8', 'wheel', 'twine'],

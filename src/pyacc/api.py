@@ -1,19 +1,26 @@
 import re
 import urllib.parse
 
+import newick
 import openpyxl
 from csvw import dsv
 from clldutils.apilib import API
 from clldutils.misc import slug, lazyproperty
 from clldutils.source import Source
+from clldutils.jsonlib import update_ordered, load
 import attr
 import nameparser
 
 from pyacc import util
+from pyacc.gbif import GBIF
 
 
 def species_converter(s):
-    return {'pan troglydytes': 'pan troglodytes'}.get(s, s)
+    return {
+        'pan troglydytes': 'pan troglodytes',
+        'Vuvecia vuriegutu vuriegutu': 'Varecia variegata variegata',
+        'psittacus eithacus': 'psittacus erithacus'
+    }.get(s, s)
 
 
 def clean_doi(s):
@@ -34,6 +41,40 @@ def valid_doi(instance, attribute, value):
 
 
 @attr.s
+class Classification:
+    kingdom = attr.ib()
+    phylum = attr.ib()
+    klass = attr.ib()
+    order = attr.ib()
+    family = attr.ib()
+    genus = attr.ib()
+
+    @classmethod
+    def from_metadata(cls, md):
+         return cls(**{'klass' if k == 'class' else k: md[k]
+                       for k in 'kingdom phylum class order family genus'.split()})
+
+
+@attr.s
+class GBIF:
+    key = attr.ib(default=None)
+    metadata = attr.ib(default=None)
+
+    @property
+    def name(self):
+        return (self.metadata or {}).get('scientificName')
+
+    @property
+    def url(self):
+        if self.key:
+            return 'https://www.gbif.org/species/{}'.format(self.key)
+
+    @property
+    def classification(self):
+        return Classification.from_metadata(self.metadata)
+
+
+@attr.s
 class Experiment:
     review_title = attr.ib()
     reviewer = attr.ib(converter=nameparser.HumanName)  # Contribution
@@ -50,6 +91,7 @@ class Experiment:
     year = attr.ib(converter=lambda s: int(s) if s else None)
     source_abstract = attr.ib(converter=lambda s: s if s != 'NA' else None)
     source = attr.ib(default=None)
+    gbif = attr.ib(default=None)
 
     @property
     def contributor_id(self):
@@ -121,6 +163,46 @@ class ACC(API):
             res[sname] = path
         return res
 
+    def update_gbif(self):
+        with update_ordered(self.path('gbif.json'), indent=4) as d:
+            gbif = GBIF()
+            for ex in self.experiments:
+                if ex.species_latin not in d:
+                    try:
+                        d[ex.species_latin] = gbif.species_data(ex.species_latin)
+                    except Exception as e:
+                        print(ex.species_latin)
+                        print(e)
+                        continue
+
+    def tree(self):
+        res = {}
+        for ex in self.experiments:
+            if ex.gbif:
+                nodes = [ex.gbif.metadata.get(k)
+                         for k in 'kingdom phylum class order family genus species'.split()]
+                sub = res
+                for n in nodes:
+                    if n is None:
+                        break
+                    if n not in sub:
+                        sub[n] = {}
+                    sub = sub[n]
+                sub[ex.species_latin] = ex.species
+
+        def make_node(name, children):
+            if isinstance(children, dict):
+                return newick.Node.create(name, descendants=[make_node(n, c) for n, c in children.items()])
+            #return newick.Node.create('{} - {}'.format(name, children))
+            return newick.Node.create(children)
+
+        for n, i in res.items():
+            print(n)
+            print(make_node(n, i).ascii_art(show_internal=False)
+                  .replace('─────────────────────', '────')
+                  .replace('                     ', '    ')
+                  )
+
     def write_bib(self):
         #
         # FIXME: keep old records, only update new stuff
@@ -152,6 +234,12 @@ class ACC(API):
 
     @lazyproperty
     def experiments(self):
-        return [
+        gbif = load(self.path('gbif.json'))
+        res = [
             Experiment.from_dict(d, self.sources)
             for d in list(dsv.reader(self.path('data.Sheet1.csv'), dicts=True))[1:]]
+        for ex in res:
+            key, md = gbif.get(ex.species_latin, (None, None))
+            if key:
+                ex.gbif = GBIF(key=key, metadata=md)
+        return res

@@ -7,6 +7,19 @@ PLOS Biology. https://doi.org/10.1371/journal.pbio.3000494
 
 Downloaded MCC consensus trees of the completed trees from
 https://github.com/n8upham/MamPhy_v1/blob/master/_DATA/MamPhy_fullPosterior_BDvr_Completed_5911sp_topoCons_NDexp_MCC_v2_target.tre
+
+import dendropy
+
+tree = dendropy.Tree.get_from_path("mammals.tre", "nexus")
+pdm = tree.phylogenetic_distance_matrix()
+hs = [n for n in tree.taxon_namespace if 'sapiens' in n.label][0]
+ordered = [tax.label for tax in sorted(tree.taxon_namespace, key=lambda t: pdm(hs, t))
+with open('mammals_ordered.csv', 'w', encoding='utf8') as fp:
+    for t in ordered:
+        comps = t.strip().split()
+        if len(comps) >= 3:
+            fp.write('{},{},{}\n'.format(' '.join(comps[:-2]), comps[-2], comps[-1]))
+
 """
 import string
 import collections

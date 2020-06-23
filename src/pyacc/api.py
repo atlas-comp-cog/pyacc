@@ -12,7 +12,7 @@ import attr
 import nameparser
 
 from pyacc import util
-from pyacc.gbif import GBIF
+from pyacc import gbif
 
 
 def species_converter(s):
@@ -59,6 +59,10 @@ class Classification:
 class GBIF:
     key = attr.ib(default=None)
     metadata = attr.ib(default=None)
+
+    @property
+    def cname(self):
+        return (self.metadata or {}).get('canonicalName')
 
     @property
     def name(self):
@@ -165,11 +169,11 @@ class ACC(API):
 
     def update_gbif(self):
         with update_ordered(self.path('gbif.json'), indent=4) as d:
-            gbif = GBIF()
+            api = gbif.GBIF()
             for ex in self.experiments:
                 if ex.species_latin not in d:
                     try:
-                        d[ex.species_latin] = gbif.species_data(ex.species_latin)
+                        d[ex.species_latin] = api.species_data(ex.species_latin)
                     except Exception as e:
                         print(ex.species_latin)
                         print(e)

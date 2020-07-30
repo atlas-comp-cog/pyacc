@@ -3,6 +3,11 @@ Compare ACC coverage against the GBIF backbone taxonomy.
 
 GBIF Secretariat (2019). GBIF Backbone Taxonomy. Checklist dataset https://doi.org/10.15468/39omei
 accessed via GBIF.org on 2020-06-18.
+
+Notes:
+- download the source archive (https://hosted-datasets.gbif.org/datasets/backbone/backbone-current.zip)
+- extract
+- pass path to Taxon.tsv as "taxa" argument.
 """
 import collections
 

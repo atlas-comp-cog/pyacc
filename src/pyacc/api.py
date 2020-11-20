@@ -51,8 +51,8 @@ class Classification:
 
     @classmethod
     def from_metadata(cls, md):
-         return cls(**{'klass' if k == 'class' else k: md[k]
-                       for k in 'kingdom phylum class order family genus'.split()})
+        return cls(**{'klass' if k == 'class' else k: md[k]
+                      for k in 'kingdom phylum class order family genus'.split()})
 
 
 @attr.s
@@ -196,7 +196,10 @@ class ACC(API):
 
         def make_node(name, children):
             if isinstance(children, dict):
-                return newick.Node.create(name, descendants=[make_node(n, c) for n, c in children.items()])
+                return newick.Node.create(
+                    name,
+                    descendants=[
+                        make_node(n, c) for n, c in children.items()])
             #return newick.Node.create('{} - {}'.format(name, children))
             return newick.Node.create(children)
 
